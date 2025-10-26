@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vessel Agent</title>
+  <style>
+    body { width: 300px; font-family: sans-serif; padding: 10px; font-size: 14px; }
+    h1 { font-size: 16px; margin-top: 0; }
+    button { margin-top: 10px; padding: 8px 12px; cursor: pointer; }
+    #status { margin-top: 10px; font-size: 12px; color: grey; min-height: 1.2em; } /* Added min-height */
+    hr { margin: 15px 0; }
+    h2, h3 { font-size: 15px; margin-bottom: 5px;} /* Applied style to h3 too */
+    textarea { margin-bottom: 5px; }
+    #responseArea {
+        margin-top: 10px;
+        font-size: 13px;
+        white-space: pre-wrap; /* Allows text wrapping */
+        word-wrap: break-word; /* Breaks long words */
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ccc; /* Added border */
+        padding: 5px; /* Added padding */
+        background-color: #f9f9f9; /* Added background color */
+        min-height: 50px; /* Added min-height */
+    }
+    /* Added style for action status */
+    #actionStatus { 
+        margin-top: 10px; 
+        font-size: 0.9em; 
+        color: grey; 
+        min-height: 1.2em;
+    } 
+  </style>
+</head>
+<body>
+  <h1>Vessel - Local Agent</h1>
+
+  <button id="indexPageButton">Index Current Page</button>
+  <div id="status">Ready.</div>
+
+  <hr>
+  <h2>Ask Ollama</h2>
+  <textarea id="promptInput" rows="4" style="width: 95%;" placeholder="Ask based on indexed pages..."></textarea>
+  <button id="askButton">Ask</button>
+  <div id="responseArea"></div>
+
+  <hr> 
+  <h3>Agent Actions</h3>
+  <button id="fillFormButton">Fill Username Field</button>
+  <div id="actionStatus"></div> 
+  <script src="popup.js"></script>
+</body>
+</html>
