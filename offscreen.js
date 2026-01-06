@@ -4,75 +4,83 @@ env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 let summarizer = null;
-
-// Store clean summaries, not raw pages
 let memory = [];
 
 async function getSummarizer() {
   if (!summarizer) {
-    summarizer = await pipeline(
-      "summarization",
-      "Xenova/distilbart-cnn-6-6"
-    );
+    summarizer = await pipeline("summarization", "Xenova/distilbart-cnn-6-6");
   }
   return summarizer;
 }
 
-// Clean + summarize page before storing
-async function summarizeForMemory(text) {
-  const model = await getSummarizer();
+function detectRisk(text) {
+  const flags = [
+    "password",
+    "login",
+    "verify",
+    "session expired",
+    "confirm identity"
+  ];
+  const lower = text.toLowerCase();
+  const hits = flags.filter(f => lower.includes(f)).length;
 
-  const summary = await model(text, {
-    max_new_tokens: 120,
-    do_sample: false
-  });
-
-  return summary[0].summary_text;
-}
-
-// Reason ONLY from clean summaries
-function reasonFromMemory(question) {
-  if (memory.length === 0) {
-    return "⚠️ No pages indexed yet. Index a page first.";
-  }
-
-  const context = memory.slice(-3).join("\n\n");
-
-  return `🧠 Local Agent Reasoning (${memory.length} pages indexed)
-
-Context:
-${context}
-
-Answer:
-• ${question}
-
-This response is generated fully offline using on-device models.`;
+  if (hits >= 3) return "SUSPICIOUS";
+  return "SAFE";
 }
 
 chrome.runtime.onMessage.addListener(async (msg) => {
 
-  // INDEX PAGE
   if (msg.type === "INDEX") {
-    const cleanSummary = await summarizeForMemory(msg.text);
+    const model = await getSummarizer();
+    const summary = await model(msg.text.slice(0, 3000), {
+      max_new_tokens: 120,
+      do_sample: false
+    });
 
-    memory.push(cleanSummary);
+    const risk = detectRisk(msg.text);
+
+    memory.push({
+      summary: summary[0].summary_text,
+      risk
+    });
 
     chrome.runtime.sendMessage({
       type: "AGENT_RESPONSE",
-      text: "✅ Page indexed and summarized successfully.",
-      memoryCount: memory.length
+      text: risk === "SUSPICIOUS"
+        ? "⚠️ High-risk credential collection page detected.\nThis page requests sensitive login information."
+        : "✅ Page indexed safely.",
+      memoryCount: memory.length,
+      risk
     });
   }
 
-  // ASK AGENT
   if (msg.type === "ASK_AGENT") {
-    const answer = reasonFromMemory(msg.question);
+    if (memory.length === 0) {
+      chrome.runtime.sendMessage({
+        type: "AGENT_RESPONSE",
+        text: "No indexed pages yet.",
+        memoryCount: 0
+      });
+      return;
+    }
+
+    const ctx = memory.slice(-2)
+      .map(m => `• (${m.risk}) ${m.summary}`)
+      .join("\n\n");
 
     chrome.runtime.sendMessage({
       type: "AGENT_RESPONSE",
-      text: answer,
+      text:
+`🧠 Local Agent Reasoning
+
+Context:
+${ctx}
+
+Answer:
+${msg.question}
+
+All reasoning performed fully offline.`,
       memoryCount: memory.length
     });
   }
-
 });
