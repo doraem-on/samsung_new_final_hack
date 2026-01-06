@@ -8,52 +8,39 @@ let memory = [];
 
 async function getSummarizer() {
   if (!summarizer) {
-    chrome.runtime.sendMessage({ type: "STATUS_UPDATE", text: "Loading AI…" });
     summarizer = await pipeline("summarization", "Xenova/distilbart-cnn-6-6");
-    chrome.runtime.sendMessage({ type: "STATUS_UPDATE", text: "AI Ready" });
   }
   return summarizer;
 }
 
-function analyzeRisk(text) {
-  let score = 0;
-  if (text.includes("password")) score += 0.3;
-  if (text.includes("eval(")) score += 0.4;
-  return {
-    level: score > 0.6 ? "HIGH" : score > 0.3 ? "MEDIUM" : "LOW",
-    score
-  };
+function answerFromMemory(question) {
+  if (memory.length === 0) {
+    return "No indexed pages yet. Please index a page first.";
+  }
+
+  // Simple but effective MVP reasoning
+  return (
+    "Based on indexed content:\n\n" +
+    memory.slice(-2).join("\n\n").slice(0, 800)
+  );
 }
 
-chrome.runtime.onMessage.addListener(async (msg) => {
-  if (msg.target !== "offscreen") return;
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-  const [{ result }] = await chrome.scripting.executeScript({
-    target: { tabId: tab.id },
-    func: () => document.body.innerText
-  });
+chrome.runtime.onMessage.addListener(async msg => {
 
   if (msg.type === "INDEX") {
-    memory.push(result.slice(0, 1000));
+    memory.push(msg.text);
     chrome.runtime.sendMessage({
       type: "AGENT_RESPONSE",
-      text: "✅ Page indexed into semantic memory"
+      text: `✅ Page indexed successfully.\nMemory size: ${memory.length}`
     });
   }
 
-  if (msg.type === "SUMMARIZE") {
-    const model = await getSummarizer();
-    const output = await model(result.slice(0, 3000));
-    const risk = analyzeRisk(result);
-
+  if (msg.type === "ASK_AGENT") {
+    const answer = answerFromMemory(msg.question);
     chrome.runtime.sendMessage({
       type: "AGENT_RESPONSE",
-      text:
-        `🧠 Summary:\n${output[0].summary_text}\n\n` +
-        `🛡️ Risk Level: ${risk.level} (${risk.score})\n` +
-        `📦 Memory Size: ${memory.length}`
+      text: answer
     });
   }
+
 });

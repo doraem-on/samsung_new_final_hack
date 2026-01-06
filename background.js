@@ -5,7 +5,7 @@ async function ensureOffscreen() {
   await chrome.offscreen.createDocument({
     url: "offscreen.html",
     reasons: ["DOM_SCRAPING"],
-    justification: "Local AI reasoning"
+    justification: "Local AI agent"
   });
   offscreenReady = true;
 }
@@ -15,31 +15,28 @@ chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
 
   if (msg.action === "INDEX_PAGE") {
     chrome.runtime.sendMessage({
-      target: "offscreen",
       type: "INDEX",
-      tabId: msg.tabId
+      text: msg.text
     });
-    sendResponse({ success: true });
   }
 
-  if (msg.action === "SUMMARIZE_PAGE") {
+  if (msg.action === "ASK_AGENT") {
     chrome.runtime.sendMessage({
-      target: "offscreen",
-      type: "SUMMARIZE",
-      tabId: msg.tabId
+      type: "ASK_AGENT",
+      question: msg.question
     });
-    sendResponse({ success: true });
   }
 
-  if (msg.action === "FILL_FORM") {
+  if (msg.action === "HIGHLIGHT_USERNAME") {
     chrome.scripting.executeScript({
       target: { tabId: msg.tabId },
       func: () => {
-        const input = document.querySelector("input[type=email], input[name*=user]");
-        if (input) input.style.border = "2px solid orange";
+        const input = document.querySelector(
+          "input[type=email], input[name*=user], input[id*=user]"
+        );
+        if (input) input.style.outline = "2px solid orange";
       }
     });
-    sendResponse({ success: true, message: "Username field highlighted" });
   }
 
   return true;

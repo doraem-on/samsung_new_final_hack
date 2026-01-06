@@ -1,36 +1,39 @@
-const out = document.getElementById("out");
+const output = document.getElementById("output");
 
-async function activeTab() {
+async function getPageText() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab.id;
+
+  const [{ result }] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: () => document.body.innerText
+  });
+
+  return { text: result.slice(0, 3000), tabId: tab.id };
 }
 
-document.getElementById("index").onclick = async () => {
-  chrome.runtime.sendMessage({
-    action: "INDEX_PAGE",
-    tabId: await activeTab()
-  });
-  out.textContent = "Indexing page…";
+document.getElementById("indexBtn").onclick = async () => {
+  output.textContent = "Indexing page...";
+  const { text } = await getPageText();
+  chrome.runtime.sendMessage({ action: "INDEX_PAGE", text });
 };
 
-document.getElementById("summarize").onclick = async () => {
-  chrome.runtime.sendMessage({
-    action: "SUMMARIZE_PAGE",
-    tabId: await activeTab()
-  });
-  out.textContent = "Summarizing…";
+document.getElementById("summarizeBtn").onclick = async () => {
+  output.textContent = "Summarizing...";
+  const { text } = await getPageText();
+  chrome.runtime.sendMessage({ action: "SUMMARIZE_PAGE", text });
 };
 
-document.getElementById("fill").onclick = async () => {
+document.getElementById("highlightBtn").onclick = async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const res = await chrome.runtime.sendMessage({
-    action: "FILL_FORM",
-    tabId: await activeTab()
+    action: "HIGHLIGHT_USERNAME",
+    tabId: tab.id
   });
-  out.textContent = res.message;
+  output.textContent = res.message;
 };
 
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === "AGENT_RESPONSE") {
-    out.textContent = msg.text;
+    output.textContent = msg.text;
   }
 });
