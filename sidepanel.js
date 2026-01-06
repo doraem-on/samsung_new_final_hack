@@ -1,5 +1,6 @@
 const statusText = document.getElementById("statusText");
 const output = document.getElementById("output");
+const memoryBadge = document.getElementById("memoryBadge");
 
 async function getPageText() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -12,31 +13,28 @@ async function getPageText() {
   return { text: result.slice(0, 3000), tabId: tab.id };
 }
 
-// INDEX
 document.getElementById("indexBtn").onclick = async () => {
   statusText.textContent = "Indexing page…";
   const { text } = await getPageText();
 
   chrome.runtime.sendMessage({
-    action: "INDEX_PAGE",
+    type: "INDEX",
     text
   });
 };
 
-// ASK AGENT (LOCAL OLLAMA-STYLE)
-document.getElementById("askBtn").onclick = async () => {
+document.getElementById("askBtn").onclick = () => {
   const question = document.getElementById("askInput").value.trim();
   if (!question) return;
 
   statusText.textContent = "Reasoning…";
 
   chrome.runtime.sendMessage({
-    action: "ASK_AGENT",
+    type: "ASK_AGENT",
     question
   });
 };
 
-// ACTION
 document.getElementById("highlightBtn").onclick = async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -46,10 +44,12 @@ document.getElementById("highlightBtn").onclick = async () => {
   });
 };
 
-// RESPONSES (NO MORE HANGING)
 chrome.runtime.onMessage.addListener(msg => {
   if (msg.type === "AGENT_RESPONSE") {
     output.textContent = msg.text;
     statusText.textContent = "Ready.";
+    if (msg.memoryCount !== undefined) {
+      memoryBadge.textContent = `Indexed pages: ${msg.memoryCount}`;
+    }
   }
 });
