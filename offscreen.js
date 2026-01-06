@@ -1,60 +1,59 @@
-// Import from your local file
-import { pipeline, env } from './xenova-transformers.min.js';
+import { pipeline, env } from "./xenova-transformers.min.js";
 
-// Configuration: Skip local checks to use cached models from CDN first (easier for MVP)
-env.allowLocalModels = false; 
+env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-// Singleton to hold the model
-class SummarizerPipeline {
-  static task = 'summarization';
-  static model = 'Xenova/distilbart-cnn-6-6';
-  static instance = null;
+let summarizer = null;
+let memory = [];
 
-  static async getInstance() {
-    if (this.instance === null) {
-      // Send message to UI that we are loading
-      chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', text: 'Loading AI Model...' });
-      this.instance = await pipeline(this.task, this.model);
-      chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', text: 'AI Ready' });
-    }
-    return this.instance;
+async function getSummarizer() {
+  if (!summarizer) {
+    chrome.runtime.sendMessage({ type: "STATUS_UPDATE", text: "Loading AI…" });
+    summarizer = await pipeline("summarization", "Xenova/distilbart-cnn-6-6");
+    chrome.runtime.sendMessage({ type: "STATUS_UPDATE", text: "AI Ready" });
   }
+  return summarizer;
 }
 
-// Message Listener
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.target !== 'offscreen') return;
+function analyzeRisk(text) {
+  let score = 0;
+  if (text.includes("password")) score += 0.3;
+  if (text.includes("eval(")) score += 0.4;
+  return {
+    level: score > 0.6 ? "HIGH" : score > 0.3 ? "MEDIUM" : "LOW",
+    score
+  };
+}
 
-  if (message.type === 'SUMMARIZE') {
-    (async () => {
-      try {
-        chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', text: 'Processing...' });
-        
-        // Get the model
-        const generator = await SummarizerPipeline.getInstance();
-        
-        // Run inference
-        const output = await generator(message.text, {
-          max_new_tokens: 100,
-          do_sample: false
-        });
+chrome.runtime.onMessage.addListener(async (msg) => {
+  if (msg.target !== "offscreen") return;
 
-        // Send back result
-        chrome.runtime.sendMessage({
-          type: 'AGENT_RESPONSE',
-          text: output[0].summary_text
-        });
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
-        chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', text: 'Done.' });
+  const [{ result }] = await chrome.scripting.executeScript({
+    target: { tabId: tab.id },
+    func: () => document.body.innerText
+  });
 
-      } catch (err) {
-        console.error("AI Error:", err);
-        chrome.runtime.sendMessage({
-          type: 'AGENT_RESPONSE',
-          text: "Error: " + err.message
-        });
-      }
-    })();
+  if (msg.type === "INDEX") {
+    memory.push(result.slice(0, 1000));
+    chrome.runtime.sendMessage({
+      type: "AGENT_RESPONSE",
+      text: "✅ Page indexed into semantic memory"
+    });
+  }
+
+  if (msg.type === "SUMMARIZE") {
+    const model = await getSummarizer();
+    const output = await model(result.slice(0, 3000));
+    const risk = analyzeRisk(result);
+
+    chrome.runtime.sendMessage({
+      type: "AGENT_RESPONSE",
+      text:
+        `🧠 Summary:\n${output[0].summary_text}\n\n` +
+        `🛡️ Risk Level: ${risk.level} (${risk.score})\n` +
+        `📦 Memory Size: ${memory.length}`
+    });
   }
 });

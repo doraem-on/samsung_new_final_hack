@@ -1,80 +1,8 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 15px;
-      background-color: #f9f9f9;
-      color: #333;
-    }
-    h2 { margin-top: 0; font-size: 18px; color: #2c3e50; }
-    .card {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-      margin-bottom: 15px;
-    }
-    .status-bar {
-      font-size: 12px;
-      color: #666;
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      background-color: #ccc;
-      border-radius: 50%;
-    }
-    .status-dot.active { background-color: #28a745; }
-    .status-dot.busy { background-color: #ffc107; }
-    
-    button {
-      width: 100%;
-      padding: 10px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background 0.2s;
-    }
-    button:hover { background-color: #0056b3; }
-    
-    #response {
-      font-size: 14px;
-      line-height: 1.5;
-      min-height: 100px;
-      white-space: pre-wrap;
-    }
-    .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 5px;}
-  </style>
-</head>
 <body>
-  <div class="card">
-    <h2>Vessel Agent</h2>
-    <div class="status-bar">
-      <div id="statusDot" class="status-dot"></div>
-      <span id="statusText">System Idle</span>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="label">Actions</div>
-    <button id="summarizeBtn">📝 Summarize This Page</button>
-  </div>
-
-  <div class="card">
-    <div class="label">Agent Output</div>
-    <div id="response">Waiting for input...</div>
-  </div>
-
-  <script src="sidepanel.js"></script>
+<h2>Vessel Monitor</h2>
+<pre id="response">Idle…</pre>
+<script src="sidepanel.js"></script>
 </body>
 </html>

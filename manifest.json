@@ -1,32 +1,25 @@
 {
   "manifest_version": 3,
-  "name": "Vessel - Privacy-First Agent",
-  "version": "1.0",
-  "description": "Offline, on-device agent with Agentic Firewall.",
+  "name": "Vessel – Privacy-First Agent",
+  "version": "1.1",
+  "description": "On-device AI agent with semantic memory & agentic firewall",
   "permissions": [
-    "sidePanel",
     "activeTab",
     "scripting",
-    "offscreen"
+    "storage",
+    "offscreen",
+    "sidePanel"
   ],
+  "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "type": "module"
   },
   "side_panel": {
     "default_path": "sidepanel.html"
   },
   "action": {
-    "default_title": "Open Vessel",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
-  },
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "default_popup": "popup.html"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
