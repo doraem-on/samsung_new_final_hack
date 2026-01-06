@@ -1,92 +1,60 @@
-// offscreen.js (FINAL MODULE VERSION)
+// Import from your local file
+import { pipeline, env } from './xenova-transformers.min.js';
 
-// --- CRITICAL FIX: Import the pipeline function directly as a module ---
-// This works because offscreen.html loads this file as type="module".
-import { pipeline } from './xenova-transformers.min.js';
-// --- END CRITICAL FIX ---
+// Configuration: Skip local checks to use cached models from CDN first (easier for MVP)
+env.allowLocalModels = false; 
+env.useBrowserCache = true;
 
-console.log("[Offscreen] Script started. Initializing embedding pipeline...");
+// Singleton to hold the model
+class SummarizerPipeline {
+  static task = 'summarization';
+  static model = 'Xenova/distilbart-cnn-6-6';
+  static instance = null;
 
-let embedder = null; 
-let modelLoadError = null; 
-
-async function initializeEmbedder() {
-    if (embedder) return embedder;
-    
-    // We can use 'pipeline' directly because we imported it.
-    if (typeof pipeline !== 'function') {
-        modelLoadError = "The 'pipeline' function could not be imported. Check that 'xenova-transformers.min.js' is the correct ESM file.";
-        throw new Error(modelLoadError);
+  static async getInstance() {
+    if (this.instance === null) {
+      // Send message to UI that we are loading
+      chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', text: 'Loading AI Model...' });
+      this.instance = await pipeline(this.task, this.model);
+      chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', text: 'AI Ready' });
     }
-    
-    try {
-        console.log("[Offscreen] Found pipeline function. Starting model download/load...");
-        
-        embedder = await pipeline( 
-            'feature-extraction',
-            'Xenova/all-MiniLM-L6-v2',
-            { 
-                quantized: true 
-            }
-        );
-        console.log("[Offscreen] Embedding model loaded and ready!");
-        return embedder;
-    } catch (error) {
-        console.error("[Offscreen] Failed to load embedding model:", error);
-        modelLoadError = error.message;
-        throw error;
-    }
+    return this.instance;
+  }
 }
 
-const embedderPromise = initializeEmbedder();
-
-// --- Message Listener (This code is correct) ---
+// Message Listener
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (sender.id !== chrome.runtime.id) {
-        return false;
-    }
+  if (message.target !== 'offscreen') return;
 
-    if (message.action === 'OFFSCREEN_READY_CHECK') {
-        sendResponse({ 
-            success: true, 
-            ready: true, 
-            model_status: modelLoadError ? 'error' : 'loading' 
+  if (message.type === 'SUMMARIZE') {
+    (async () => {
+      try {
+        chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', text: 'Processing...' });
+        
+        // Get the model
+        const generator = await SummarizerPipeline.getInstance();
+        
+        // Run inference
+        const output = await generator(message.text, {
+          max_new_tokens: 100,
+          do_sample: false
         });
-        return false; 
-    }
 
-    if (message.action === 'getEmbedding' && message.text) {
-        console.log(`[Offscreen Listener] Received 'getEmbedding' request for text length: ${message.text.length}`);
-        
-        (async () => {
-            if (modelLoadError) {
-                sendResponse({ success: false, error: `Model failed to load: ${modelLoadError}` });
-                return;
-            }
+        // Send back result
+        chrome.runtime.sendMessage({
+          type: 'AGENT_RESPONSE',
+          text: output[0].summary_text
+        });
 
-            try {
-                const embedderInstance = await embedderPromise;
-                
-                const output = await embedderInstance(message.text, { 
-                    pooling: 'mean', 
-                    normalize: true 
-                });
-                
-                const embeddingArray = Array.from(output.data);
-                
-                console.log(`[Offscreen] Embedding complete. Size: ${embeddingArray.length}`);
-                sendResponse({ success: true, embedding: embeddingArray });
+        chrome.runtime.sendMessage({ type: 'STATUS_UPDATE', text: 'Done.' });
 
-            } catch (error) {
-                console.error("[Offscreen] Embedding generation error:", error);
-                sendResponse({ success: false, error: error.message });
-            }
-        })();
-        
-        return true; 
-    }
-    
-    return false;
+      } catch (err) {
+        console.error("AI Error:", err);
+        chrome.runtime.sendMessage({
+          type: 'AGENT_RESPONSE',
+          text: "Error: " + err.message
+        });
+      }
+    })();
+  }
 });
-
-console.log("[Offscreen] Listener active.");
