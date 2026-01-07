@@ -1,115 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<title>Vessel – Local Agent</title>
-<style>
-  body {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    margin: 0;
-    padding: 14px;
-    background: #f4f7fb;
-    color: #1f2a37;
-  }
-
-  h2 {
-    margin: 0 0 6px 0;
-    font-size: 18px;
-  }
-
-  .subtle {
-    font-size: 11px;
-    color: #6b7280;
-  }
-
-  .card {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 14px;
-    margin-bottom: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-  }
-
-  .status {
-    font-size: 12px;
-    margin-top: 4px;
-    color: #374151;
-  }
-
-  button {
-    width: 100%;
-    padding: 10px;
-    margin-top: 8px;
-    border-radius: 8px;
-    border: none;
-    background: #0057ff;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  button.secondary {
-    background: #e5e7eb;
-    color: #111827;
-  }
-
-  textarea {
-    width: 100%;
-    resize: none;
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
-    margin-top: 8px;
-    font-size: 13px;
-  }
-
-  pre {
-    white-space: pre-wrap;
-    font-size: 13px;
-    background: #f9fafb;
-    padding: 10px;
-    border-radius: 8px;
-    min-height: 90px;
-    border: 1px solid #e5e7eb;
-  }
-
-  .badge {
-    display: inline-block;
-    background: #e0e7ff;
-    color: #1e3a8a;
-    font-size: 11px;
-    padding: 3px 6px;
-    border-radius: 6px;
-    margin-top: 6px;
-  }
-
-</style>
+  <style>
+    body {
+      font-family: system-ui;
+      background: #f6f8fb;
+      margin: 0;
+      padding: 12px;
+    }
+    .card {
+      background: white;
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 6px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .primary { background: #0b5cff; color: white; }
+    .secondary { background: #e9ecef; }
+    #output {
+      white-space: pre-wrap;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+  </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>Vessel – Local Agent</h2>
-  <div class="subtle">Offline • On-device • Privacy-first</div>
-  <div class="status" id="statusText">Ready.</div>
-  <div class="badge" id="memoryBadge">Indexed pages: 0</div>
+  <h3>Vessel – Local Agent</h3>
+  <div id="counter">Indexed pages: 0</div>
 </div>
 
 <div class="card">
-  <button id="indexBtn">Index Current Page</button>
+  <button id="indexBtn" class="primary">Index Current Page</button>
 </div>
 
 <div class="card">
-  <textarea id="askInput" rows="3"
-    placeholder="Ask the agent based on indexed pages…"></textarea>
-  <button id="askBtn">Ask Agent</button>
+  <textarea id="query" rows="3" placeholder="Ask the agent..."></textarea>
+  <button id="askBtn" class="primary">Ask Agent</button>
 </div>
 
 <div class="card">
-  <button class="secondary" id="highlightBtn">Highlight Username Field</button>
+  <button id="highlightBtn" class="secondary">Highlight Username</button>
+  <button id="fillBtn" class="secondary">Fill Username (Demo)</button>
 </div>
 
 <div class="card">
-  <pre id="output">Waiting for input…</pre>
+  <div id="output">Waiting for input...</div>
 </div>
 
 <script src="sidepanel.js"></script>
