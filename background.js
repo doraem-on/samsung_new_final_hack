@@ -1,3 +1,5 @@
+import { cleanUrl } from './security/linkCleaner.js';
+
 let offscreenReady = false;
 
 // 🔹 AGENT MEMORY
@@ -8,8 +10,29 @@ const agentState = {
   lastUsername: null
 };
 
+// --- NEW FEATURE: LINK DETOX ---
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+    if (details.frameId === 0) { // Main frame only
+        const clean = cleanUrl(details.url);
+        if (clean) {
+            console.log(`[Vessel] Sanitized: ${details.url} -> ${clean}`);
+            chrome.tabs.update(details.tabId, { url: clean });
+        }
+    }
+});
+// -------------------------------
+
 async function ensureOffscreen() {
   if (offscreenReady) return;
+  // Check if it already exists to avoid error
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: ['OFFSCREEN_DOCUMENT']
+  });
+  if (existingContexts.length > 0) {
+    offscreenReady = true;
+    return;
+  }
+  
   await chrome.offscreen.createDocument({
     url: "offscreen.html",
     reasons: ["DOM_SCRAPING"],
@@ -27,35 +50,40 @@ async function getPageText(tabId) {
   return result;
 }
 
-// ✅ FIXED: extract username from MAIN world
+// ✅ Extract username (MAIN world)
 async function extractUsername(tabId) {
   const [{ result }] = await chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
     func: () => {
-      const el = document.querySelector(
-        'input[name="username"], input[type="email"], input[id*="user"]'
-      );
+      const el =
+        document.querySelector('input[name="username"]') ||
+        document.querySelector('input[type="email"]');
       return el ? el.value : null;
     }
   });
   return result;
 }
 
+// ✅ Highlight username field
 function highlightUsername(tabId) {
   chrome.scripting.executeScript({
     target: { tabId },
     world: "MAIN",
     func: () => {
-      const el = document.querySelector(
-        'input[name="username"], input[type="email"], input[id*="user"]'
-      );
-      if (el) el.style.outline = "2px solid red";
+      const el =
+        document.querySelector('input[name="username"]') ||
+        document.querySelector('input[type="email"]');
+      if (!el) return;
+
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.style.outline = "3px solid red";
+      el.style.backgroundColor = "rgba(255,0,0,0.05)";
     }
   });
 }
 
-// ✅ FIXED: fills indexed username (not demo)
+// ✅ React-safe fill username
 function fillUsername(tabId) {
   const valueToFill = agentState.lastUsername || "demo_user";
 
@@ -63,19 +91,23 @@ function fillUsername(tabId) {
     target: { tabId },
     world: "MAIN",
     func: (value) => {
-      const el = document.querySelector(
-        'input[name="username"], input[type="email"], input[id*="user"]'
-      );
-      if (el) {
-        el.focus();
-        el.value = value;
+      const el =
+        document.querySelector('input[name="username"]') ||
+        document.querySelector('input[type="email"]');
 
-        // React compatibility
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
+      if (!el) return;
 
-        el.style.outline = "2px solid red";
-      }
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value"
+      ).set;
+
+      nativeSetter.call(el, value);
+
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+
+      el.style.outline = "3px solid red";
     },
     args: [valueToFill]
   });
